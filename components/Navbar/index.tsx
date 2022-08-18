@@ -5,8 +5,6 @@ const Navbar = () => {
                 <h1 className="flex-1">LOGO</h1>
                 <ul className="flex-1 flex items-center justify-between">
                     <li>Home</li>
-                    <li>Nav 2</li>
-                    <li>Nav 3</li>
                 </ul>
             </div>
         </nav>

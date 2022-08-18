@@ -1,11 +1,12 @@
 import type { NextPage } from 'next';
 import { FormEventHandler, useState } from 'react';
 import Default from '../layouts/default';
-import { create, IPFSHTTPClient, Options } from 'ipfs-http-client';
+import { File, Web3Storage } from 'web3.storage';
+import { useToast } from "@chakra-ui/react";
 
 import NetworkList from "../public/networks.json";
 
-const client: IPFSHTTPClient = create('https://ipfs.infura.io:5001/api/v0' as Options);
+const client = new Web3Storage({ token: process.env.TOKEN !== undefined ? process.env.TOKEN : "null"} as any);
 
 const Home: NextPage = () => {
   const [name, setName] = useState<string>("");
@@ -14,19 +15,32 @@ const Home: NextPage = () => {
   const [network, setNetwork] = useState<string>(NetworkList?.network_names[0]);
   const [file, setFile] = useState<File | null>(null);
 
+  const toast = useToast();
+
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
-    const fileData = JSON.parse(await file?.text() as string);
-    const contractData = {
-      name: name,
-      network: network,
-      address: address,
-      notes: notes,
-      abi: fileData?.abi
-    }; 
-    // const cid = await client.add(JSON.stringify(contractData));
-    // console.log(cid);
-    console.log(contractData);
+    try {
+      const fileData = JSON.parse(await file?.text() as string);
+      const contractData = {
+        name: name,
+        network: network,
+        address: address,
+        notes: notes,
+        abi: fileData?.abi
+      }; 
+      const blob = new Blob([JSON.stringify(contractData)], { type: 'application/json' });
+      const files = [new File([blob], 'data.json')];
+      const cid = await client.put(files);
+      toast({
+        title: "Contract Data Uploaded Successfully",
+        description: `View your contract at https://localhost:3000/view/${cid}`,
+        status: "success",
+        duration: 5000,
+        isClosable: true
+      });
+    } catch (e) {
+      console.log("Error", e);
+    }
   };
 
   return (

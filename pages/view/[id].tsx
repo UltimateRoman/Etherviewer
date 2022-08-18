@@ -10,7 +10,7 @@ const View = () => {
         async function checkData() {
             if (url) {
                 try {
-                    const dataUrl = `https://${url}.ipfs.infura-ipfs.io/`;
+                    const dataUrl = `https://ipfs.io/ipfs/${url}/data.json`;
                     const resp = await axios(dataUrl);
                     console.log(resp.data);
                 } catch (e) {
