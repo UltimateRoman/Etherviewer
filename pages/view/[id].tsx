@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { ethers, Contract } from "ethers";
 
+
 import Chains from "../../public/chains.json";
 import Default from "../../layouts/default";
 
@@ -23,7 +24,45 @@ const View = () => {
     const router = useRouter();
     const url = router.query.id;
 
+    async function connectWallet() {
+        // Check if MetaMask is installed
+       // MetaMask injects the global API into window.ethereum
+       if (window?.ethereum as any) {
+           try {
+           // check if the chain to connect to is installed
+           await (window?.ethereum as any).request({
+               method: 'wallet_switchEthereumChain',
+               params: [{ chainId: '0x61' }], // chainId must be in hexadecimal numbers
+           });
+           } catch (error) {
+           // This error code indicates that the chain has not been added to MetaMask
+           // if it is not, then install it into the user MetaMask
+           if ((error?.code as any) === 4902) {
+               try {
+               await (window?.ethereum as any).request({
+                   method: 'wallet_addEthereumChain',
+                   params: [
+                   {
+                       chainId: '0x61',
+                       rpcUrl: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+                   },
+                   ],
+               });
+               } catch (addError) {
+               console.error(addError);
+               }
+           }
+           console.error(error);
+           }
+       } else {
+           // if no window.ethereum then MetaMask is not installed
+           alert('MetaMask is not installed. Please consider installing it: https://metamask.io/download.html');
+       } 
+   }
+
+
     useEffect(() => {
+        
         async function checkData() {
             setLoading(true);
             if (url) {
@@ -116,9 +155,11 @@ const View = () => {
             <div className="flex items-center justify-between w-full">
                 <h2 className="text-2xl font-bold uppercase">State Mutating Functions</h2>
                 <button 
+                    onClick={connectWallet}
                     className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"
+                    
                 >
-                    Connect Wallet
+                   Connect wallet
                 </button>
             </div>
             <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
