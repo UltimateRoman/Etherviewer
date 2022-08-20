@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import React, { FormEventHandler, useEffect, useState } from "react";
 import axios from "axios";
 import { ethers, Contract, Signer } from "ethers";
 
@@ -23,6 +23,8 @@ const View = () => {
     const [selectedViewFunction, setSelectedViewFunction] = useState<string>(viewFunctions[0]);
     const [selectedNonViewFunction, setSelectedNonViewFunction] = useState<string>(nonViewFunctions[0]);
 
+    const [formData, setFormData] = useState<any>({})
+
     const router = useRouter();
     const url = router.query.id;
 
@@ -32,7 +34,7 @@ const View = () => {
                 await (window as any)?.ethereum?.enable();
                 await (window as any)?.ethereum?.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x'+network?.chainId?.toString(16) }],
+                    params: [{ chainId: '0x' + network?.chainId?.toString(16) }],
                 });
                 const provider = new ethers.providers.Web3Provider((window as any)?.ethereum);
                 const signer = provider?.getSigner();
@@ -44,7 +46,7 @@ const View = () => {
                             method: 'wallet_addEthereumChain',
                             params: [
                                 {
-                                    chainId: '0x'+network?.chainId?.toString(16),
+                                    chainId: '0x' + network?.chainId?.toString(16),
                                     chainName: network?.name,
                                     nativeCurrency: network?.nativeCurrency,
                                     rpcUrls: [(network?.rpc?.filter((url: any) => !url.includes("API_KEY")))[0]],
@@ -63,10 +65,10 @@ const View = () => {
             }
         } else {
             alert('MetaMask wallet not detected. Please consider installing it: https://metamask.io/download.html');
-        } 
-   }
+        }
+    }
 
-    useEffect(() => {        
+    useEffect(() => {
         async function checkData() {
             setLoading(true);
             if (url) {
@@ -108,6 +110,28 @@ const View = () => {
         checkData();
     }, [url]);
 
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        const fnArguments: string[] = []
+        viewFunctionInputs?.forEach(({ name }: { name: string }) => {
+            fnArguments.push(formData?.[name] ?? "")
+        })
+        try {
+            const result = await contract?.[selectedViewFunction]?.apply(null, fnArguments)
+            console.log(result)
+        } catch (e: any) {
+            console.log(e)
+        }
+    }
+
+    const handleFormDataChange = (e: any) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            [e.target?.name]: e.target?.value
+        }))
+    }
+
     return loading ? (
         <Default>
             <div className="min-h-[90vh] flex flex-col justify-start items-start w-full mx-auto my-[50px]">
@@ -119,8 +143,8 @@ const View = () => {
             <h2 className="text-2xl font-bold uppercase">View Functions</h2>
             <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
                 <div className="border p-[30px] rounded-l">
-                    <select 
-                        name="select" 
+                    <select
+                        name="select"
                         id="select"
                         value={selectedViewFunction}
                         className="bg-gray-200 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
@@ -131,45 +155,46 @@ const View = () => {
                         }}
                     >
                         {viewFunctions?.map((viewFunc, key) => {
-                            return(
+                            return (
                                 <option key={key} value={viewFunc}>{viewFunc}</option>
                             );
                         })}
                     </select>
                 </div>
-                <div className="border p-[30px]">
+                <form className="border p-[30px]" onSubmit={handleSubmit}>
                     {viewFunctionInputs?.map((inputParam, key) => {
-                        return(
-                            <React.Fragment>
-                                <input
-                                    type="text"
-                                    id="input"
-                                    className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
-                                    placeholder={inputParam?.name}
-                                    required
-                                />
-                            </React.Fragment>
+                        return (
+                            <input
+                                type="text"
+                                id="input"
+                                className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
+                                placeholder={inputParam?.name}
+                                name={inputParam?.name}
+                                onChange={handleFormDataChange}
+                                required
+                                key={key}
+                            />
                         );
                     })}
                     <button className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]">Query data</button>
-                </div>
+                </form>
                 <div className="border p-[30px] rounded-r">
 
                 </div>
             </div>
             <div className="flex items-center justify-between w-full">
                 <h2 className="text-2xl font-bold uppercase">State Mutating Functions</h2>
-                <button 
+                <button
                     onClick={connectWallet}
-                    className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"  
+                    className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"
                 >
-                   Connect wallet
+                    Connect wallet
                 </button>
             </div>
             <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
                 <div className="border p-[30px] rounded-l">
-                    <select 
-                        name="select" 
+                    <select
+                        name="select"
                         id="select"
                         value={selectedNonViewFunction}
                         className="bg-gray-200 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
@@ -180,7 +205,7 @@ const View = () => {
                         }}
                     >
                         {nonViewFunctions?.map((nonViewFunc, key) => {
-                            return(
+                            return (
                                 <option key={key} value={nonViewFunc}>{nonViewFunc}</option>
                             );
                         })}
@@ -188,16 +213,15 @@ const View = () => {
                 </div>
                 <div className="border p-[30px]">
                     {nonViewFunctionInputs?.map((inputParam, key) => {
-                        return(
-                            <React.Fragment>
-                                <input
-                                    type="text"
-                                    id="input"
-                                    className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
-                                    placeholder={inputParam?.name}
-                                    required
-                                />
-                            </React.Fragment>
+                        return (
+                            <input
+                                type="text"
+                                id="input"
+                                className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
+                                placeholder={inputParam?.name}
+                                required
+                                key={key}
+                            />
                         );
                     })}
                     <button className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]">Send Tx</button>
