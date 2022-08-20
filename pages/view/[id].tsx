@@ -1,16 +1,18 @@
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { ethers, Contract } from "ethers";
-
+import { ethers, Contract, Signer } from "ethers";
 
 import Chains from "../../public/chains.json";
 import Default from "../../layouts/default";
+
 
 const View = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [contract, setContract] = useState<Contract>();
     const [network, setNetwork] = useState<any>();
+    const [contractData, setContractData] = useState<string>();
+    const [walletSigner, setWalletSigner] = useState<Signer>();
     const [contractFunctions, setContractFunctions] = useState<any[]>([]);
     const [viewFunctions, setViewFunctions] = useState<string[]>([]);
     const [viewFunctionInputs, setViewFunctionInputs] = useState<any[]>();
@@ -25,50 +27,53 @@ const View = () => {
     const url = router.query.id;
 
     async function connectWallet() {
-        // Check if MetaMask is installed
-       // MetaMask injects the global API into window.ethereum
-       if (window?.ethereum as any) {
-           try {
-           // check if the chain to connect to is installed
-           await (window?.ethereum as any).request({
-               method: 'wallet_switchEthereumChain',
-               params: [{ chainId: '0x61' }], // chainId must be in hexadecimal numbers
-           });
-           } catch (error) {
-           // This error code indicates that the chain has not been added to MetaMask
-           // if it is not, then install it into the user MetaMask
-           if ((error?.code as any) === 4902) {
-               try {
-               await (window?.ethereum as any).request({
-                   method: 'wallet_addEthereumChain',
-                   params: [
-                   {
-                       chainId: '0x61',
-                       rpcUrl: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
-                   },
-                   ],
-               });
-               } catch (addError) {
-               console.error(addError);
-               }
-           }
-           console.error(error);
-           }
-       } else {
-           // if no window.ethereum then MetaMask is not installed
-           alert('MetaMask is not installed. Please consider installing it: https://metamask.io/download.html');
-       } 
+        if (typeof (window as any).ethereum !== 'undefined') {
+            try {
+                await (window as any)?.ethereum?.enable();
+                await (window as any)?.ethereum?.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x'+network?.chainId?.toString(16) }],
+                });
+                const provider = new ethers.providers.Web3Provider((window as any)?.ethereum);
+                const signer = provider?.getSigner();
+                setWalletSigner(signer);
+            } catch (error) {
+                if ((error as any)?.code === 4902) {
+                    try {
+                        await (window as any)?.ethereum?.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [
+                                {
+                                    chainId: '0x'+network?.chainId?.toString(16),
+                                    chainName: network?.name,
+                                    nativeCurrency: network?.nativeCurrency,
+                                    rpcUrls: [(network?.rpc?.filter((url: any) => !url.includes("API_KEY")))[0]],
+                                },
+                            ],
+                        });
+                        const provider = new ethers.providers.Web3Provider((window as any)?.ethereum);
+                        const signer = provider?.getSigner();
+                        console.log(signer)
+                        setWalletSigner(signer);
+                    } catch (addError) {
+                        console.error(addError);
+                    }
+                }
+                console.error(error);
+            }
+        } else {
+            alert('MetaMask wallet not detected. Please consider installing it: https://metamask.io/download.html');
+        } 
    }
 
-
-    useEffect(() => {
-        
+    useEffect(() => {        
         async function checkData() {
             setLoading(true);
             if (url) {
                 try {
                     const dataUrl = `https://ipfs.io/ipfs/${url}/data.json`;
                     const resp = await axios(dataUrl);
+                    setContractData(resp?.data);
                     const abi = resp?.data?.abi;
 
                     const networkData = Chains?.find((nt: any) => nt?.name == resp?.data?.network) as any;
@@ -156,8 +161,7 @@ const View = () => {
                 <h2 className="text-2xl font-bold uppercase">State Mutating Functions</h2>
                 <button 
                     onClick={connectWallet}
-                    className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"
-                    
+                    className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"  
                 >
                    Connect wallet
                 </button>
