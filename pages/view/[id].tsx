@@ -9,13 +9,18 @@ import Default from "../../layouts/default";
 
 const View = () => {
     const [loading, setLoading] = useState<boolean>(true);
+    const [processing, setProcessing] = useState<boolean>(false);
     const [contract, setContract] = useState<Contract>();
     const [network, setNetwork] = useState<any>();
-    const [contractData, setContractData] = useState<string>();
+    const [contractData, setContractData] = useState<any>();
+    const [isConnected, setConnected] = useState<boolean>(false);
+    const [txStatus, setTxStatus] = useState<string>("");
+    const [txValue, setTxValue] = useState<bigint>();
     const [walletSigner, setWalletSigner] = useState<Signer>();
     const [contractFunctions, setContractFunctions] = useState<any[]>([]);
     const [viewFunctions, setViewFunctions] = useState<string[]>([]);
     const [viewFunctionInputs, setViewFunctionInputs] = useState<any[]>();
+    const [viewFunctionOuput, setViewFunctionOutput] = useState<string>("");
     const [nonViewFunctionInputs, setNonViewFunctionInputs] = useState<any[]>([]);
     const [nonViewFunctions, setNonViewFunctions] = useState<string[]>([]);
     const [payableFunctions, setPayableFunctions] = useState<string[]>([]);
@@ -23,7 +28,8 @@ const View = () => {
     const [selectedViewFunction, setSelectedViewFunction] = useState<string>(viewFunctions[0]);
     const [selectedNonViewFunction, setSelectedNonViewFunction] = useState<string>(nonViewFunctions[0]);
 
-    const [formData, setFormData] = useState<any>({})
+    const [formData, setFormData] = useState<any>({});
+    const [formData1, setFormData1] = useState<any>({});
 
     const router = useRouter();
     const url = router.query.id;
@@ -39,6 +45,7 @@ const View = () => {
                 const provider = new ethers.providers.Web3Provider((window as any)?.ethereum);
                 const signer = provider?.getSigner();
                 setWalletSigner(signer);
+                setConnected(true);
             } catch (error) {
                 if ((error as any)?.code === 4902) {
                     try {
@@ -55,8 +62,8 @@ const View = () => {
                         });
                         const provider = new ethers.providers.Web3Provider((window as any)?.ethereum);
                         const signer = provider?.getSigner();
-                        console.log(signer)
                         setWalletSigner(signer);
+                        setConnected(false);
                     } catch (addError) {
                         console.error(addError);
                     }
@@ -112,21 +119,61 @@ const View = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-
-        const fnArguments: string[] = []
-        viewFunctionInputs?.forEach(({ name }: { name: string }) => {
-            fnArguments.push(formData?.[name] ?? "")
+        setProcessing(true);
+        const fnArguments: any[] = []
+        viewFunctionInputs?.forEach(({ name }: { name: any }) => {
+            fnArguments.push(formData?.[name] ?? "");
         })
         try {
-            const result = await contract?.[selectedViewFunction]?.apply(null, fnArguments)
-            console.log(result)
+            let result = await contract?.[selectedViewFunction]?.apply(null, fnArguments);
+            const viewFunc = contractData?.abi?.find((fn: any) => fn?.name === selectedViewFunction) as any;
+            if (viewFunc?.outputs?.length > 1) {
+                Object.keys(result).forEach(function(key, index) {
+                    result[key] = result[key].toString();
+                });
+                setViewFunctionOutput(JSON.stringify(result));
+            } else {
+                setViewFunctionOutput(result.toString());
+            }
         } catch (e: any) {
-            console.log(e)
+            console.log(e);
+            setViewFunctionOutput("Error occured while making the call");
         }
+        setProcessing(false);
+    }
+
+    const sendTx = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setProcessing(true);
+        const fnArguments: any[] = []
+        nonViewFunctionInputs?.forEach(({ name }: { name: any }) => {
+            fnArguments.push(formData1?.[name] ?? "");
+        });
+        try {
+            const contractObj = new ethers.Contract(contractData.address, contractData.ani, walletSigner);
+            const tx = await contractObj?.[selectedNonViewFunction]?.apply(null, fnArguments, {value: txValue});
+            await tx?.wait();  
+            setTxStatus(`Transaction successful with hash: ${tx?.hash}`);          
+        } catch (e: any) {
+            console.log(e);
+            if (e?.code === 4001) {
+                setTxStatus("Transaction was rejected by the user");
+            } else {
+                setTxStatus("Error occured while sending the transaction");
+            }
+        }
+        setProcessing(false);
     }
 
     const handleFormDataChange = (e: any) => {
         setFormData((prev: any) => ({
+            ...prev,
+            [e.target?.name]: e.target?.value
+        }))
+    }
+
+    const handleFormDataChange1 = (e: any) => {
+        setFormData1((prev: any) => ({
             ...prev,
             [e.target?.name]: e.target?.value
         }))
@@ -140,6 +187,10 @@ const View = () => {
         </Default>
     ) : (
         <Default>
+            <h2 className="text-2xl mt-4 text-blue-800 font-bold uppercase">{contractData?.name}</h2>
+            <h2 className="text-xl font-semibold">Network: {contractData?.network}</h2>
+            <h2 className="text-lg text-gray-600 font-medium">Contract Address: {contractData?.address}</h2>
+            <br/><br/>
             <h2 className="text-2xl font-bold uppercase">View Functions</h2>
             <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
                 <div className="border p-[30px] rounded-l">
@@ -176,10 +227,16 @@ const View = () => {
                             />
                         );
                     })}
-                    <button className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]">Query data</button>
+                    <button 
+                        className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]"
+                        disabled={processing}
+                    >
+                        Query data
+                    </button>
                 </form>
                 <div className="border p-[30px] rounded-r">
-
+                    <p className="font-sans mb-6 text-xl font-semibold">OUTPUT</p>
+                    <p className="font-sans text-lg">{viewFunctionOuput}</p>
                 </div>
             </div>
             <div className="flex items-center justify-between w-full">
@@ -187,8 +244,9 @@ const View = () => {
                 <button
                     onClick={connectWallet}
                     className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"
+                    disabled={isConnected}
                 >
-                    Connect wallet
+                    {isConnected ? "Connected" : "Connect Wallet"}
                 </button>
             </div>
             <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
@@ -211,7 +269,7 @@ const View = () => {
                         })}
                     </select>
                 </div>
-                <div className="border p-[30px]">
+                <form className="border p-[30px]" onSubmit={sendTx}>
                     {nonViewFunctionInputs?.map((inputParam, key) => {
                         return (
                             <input
@@ -221,13 +279,30 @@ const View = () => {
                                 placeholder={inputParam?.name}
                                 required
                                 key={key}
+                                onChange={handleFormDataChange1}
+                                name={inputParam?.name}
                             />
                         );
                     })}
-                    <button className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]">Send Tx</button>
-                </div>
+                    <input
+                        type="text"
+                        id="input"
+                        name="txvalue"
+                        className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
+                        placeholder="Value to send (wei)"
+                        required
+                        onChange={e => setTxValue(BigInt(e.target.value))}
+                    />
+                    <button 
+                        className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]"
+                        disabled={!isConnected}
+                    >
+                        Send Tx  
+                    </button>
+                </form>
                 <div className="border p-[30px] rounded-r">
-
+                    <p className="font-sans mb-6 text-xl font-semibold">TX STATUS</p>
+                    <p className="font-sans text-lg">{txStatus}</p>
                 </div>
             </div>
         </Default>
