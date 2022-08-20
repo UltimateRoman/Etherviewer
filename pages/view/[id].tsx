@@ -9,10 +9,16 @@ import Default from "../../layouts/default";
 const View = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [contract, setContract] = useState<Contract>();
+    const [network, setNetwork] = useState<any>();
     const [contractFunctions, setContractFunctions] = useState<any[]>([]);
     const [viewFunctions, setViewFunctions] = useState<string[]>([]);
+    const [viewFunctionInputs, setViewFunctionInputs] = useState<any[]>();
+    const [nonViewFunctionInputs, setNonViewFunctionInputs] = useState<any[]>([]);
+    const [nonViewFunctions, setNonViewFunctions] = useState<string[]>([]);
     const [payableFunctions, setPayableFunctions] = useState<string[]>([]);
     const [nonPayableFunctions, setNonPayableFunctions] = useState<string[]>([]);
+    const [selectedViewFunction, setSelectedViewFunction] = useState<string>(viewFunctions[0]);
+    const [selectedNonViewFunction, setSelectedNonViewFunction] = useState<string>(nonViewFunctions[0]);
 
     const router = useRouter();
     const url = router.query.id;
@@ -26,24 +32,27 @@ const View = () => {
                     const resp = await axios(dataUrl);
                     const abi = resp?.data?.abi;
 
-                    const networksData = Chains?.find((nt: any) => nt?.name == resp?.data?.network) as any;
-                    const RPC = (networksData?.rpc?.filter((url: any) => !url.includes("API_KEY")))[0];
+                    const networkData = Chains?.find((nt: any) => nt?.name == resp?.data?.network) as any;
+                    setNetwork(networkData);
+                    const RPC = (networkData?.rpc?.filter((url: any) => !url.includes("API_KEY")))[0];
                     const provider = new ethers.providers.JsonRpcProvider(RPC);
                     const contractObject = new ethers.Contract(resp?.data?.address, resp?.data?.abi, provider);
                     setContract(contractObject);
 
-                    const contractFunctions = abi.filter((fn: any) => fn?.type == "function");
+                    const contractFunctions = abi?.filter((fn: any) => fn?.type === "function");
                     setContractFunctions(contractFunctions);
 
-                    const viewFunctions = abi.filter((fn: any) => fn?.stateMutability === "view");
-                    const viewFunctionNames = viewFunctions.map((nt: any) => nt?.name);
-                    const nonViewFunctions = abi.filter((fn: any) => fn?.stateMutability !== "view");
-                    const nonPayableFunctions = nonViewFunctions.filter((fn: any) => fn?.stateMutability === "nonpayable");
-                    const nonPayableFunctionNames = nonPayableFunctions.map((nt: any) => nt?.name);
-                    const payableFunctions = nonViewFunctions.filter((fn: any) => fn?.stateMutability === "payable");
-                    const payableFunctionNames = payableFunctions.map((nt: any) => nt?.name);
+                    const viewFunctions = abi?.filter((fn: any) => fn?.stateMutability === "view") as any;
+                    const viewFunctionNames = viewFunctions?.map((nt: any) => nt?.name);
+                    const nonViewFunctions = abi?.filter((fn: any) => fn?.stateMutability !== "view" && fn?.type === "function");
+                    const nonViewFunctionNames = nonViewFunctions?.map((nt: any) => nt?.name);
+                    const nonPayableFunctions = nonViewFunctions?.filter((fn: any) => fn?.stateMutability === "nonpayable");
+                    const nonPayableFunctionNames = nonPayableFunctions?.map((nt: any) => nt?.name);
+                    const payableFunctions = nonViewFunctions?.filter((fn: any) => fn?.stateMutability === "payable");
+                    const payableFunctionNames = payableFunctions?.map((nt: any) => nt?.name);
 
                     setViewFunctions(viewFunctionNames);
+                    setNonViewFunctions(nonViewFunctionNames);
                     setPayableFunctions(payableFunctionNames);
                     setNonPayableFunctions(nonPayableFunctionNames);
                 } catch (e) {
@@ -66,12 +75,39 @@ const View = () => {
             <h2 className="text-2xl font-bold uppercase">View Functions</h2>
             <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
                 <div className="border p-[30px] rounded-l">
-                    <select name="select" id="select" className="bg-gray-100 px-[10px] py-[5px] rounded">
-                        <option value="1">Select Menu</option>
+                    <select 
+                        name="select" 
+                        id="select"
+                        value={selectedViewFunction}
+                        className="bg-gray-200 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
+                        onChange={e => {
+                            setSelectedViewFunction(e.target.value);
+                            const func = contractFunctions?.find((fn: any) => fn?.name === e.target.value) as any;
+                            setViewFunctionInputs(func?.inputs);
+                        }}
+                    >
+                        {viewFunctions?.map((viewFunc, key) => {
+                            return(
+                                <option key={key} value={viewFunc}>{viewFunc}</option>
+                            );
+                        })}
                     </select>
                 </div>
                 <div className="border p-[30px]">
-
+                    {viewFunctionInputs?.map((inputParam, key) => {
+                        return(
+                            <React.Fragment>
+                                <input
+                                    type="text"
+                                    id="input"
+                                    className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
+                                    placeholder={inputParam?.name}
+                                    required
+                                />
+                            </React.Fragment>
+                        );
+                    })}
+                    <button className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]">Query data</button>
                 </div>
                 <div className="border p-[30px] rounded-r">
 
@@ -79,16 +115,47 @@ const View = () => {
             </div>
             <div className="flex items-center justify-between w-full">
                 <h2 className="text-2xl font-bold uppercase">State Mutating Functions</h2>
-                <button className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]">Connect Wallet</button>
+                <button 
+                    className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"
+                >
+                    Connect Wallet
+                </button>
             </div>
             <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
                 <div className="border p-[30px] rounded-l">
-                    <select name="select" id="select" className="bg-gray-100 px-[10px] py-[5px] rounded">
-                        <option value="1">Select Menu</option>
+                    <select 
+                        name="select" 
+                        id="select"
+                        value={selectedNonViewFunction}
+                        className="bg-gray-200 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
+                        onChange={e => {
+                            setSelectedNonViewFunction(e.target.value);
+                            const func = contractFunctions?.find((fn: any) => fn?.name === e.target.value) as any;
+                            setNonViewFunctionInputs(func?.inputs);
+                        }}
+                    >
+                        {nonViewFunctions?.map((nonViewFunc, key) => {
+                            return(
+                                <option key={key} value={nonViewFunc}>{nonViewFunc}</option>
+                            );
+                        })}
                     </select>
                 </div>
                 <div className="border p-[30px]">
-
+                    {nonViewFunctionInputs?.map((inputParam, key) => {
+                        return(
+                            <React.Fragment>
+                                <input
+                                    type="text"
+                                    id="input"
+                                    className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
+                                    placeholder={inputParam?.name}
+                                    required
+                                />
+                            </React.Fragment>
+                        );
+                    })}
+                    <button className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]">Send Tx</button>
                 </div>
                 <div className="border p-[30px] rounded-r">
 
