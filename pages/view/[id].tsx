@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import React, { FormEventHandler, useEffect, useState } from "react";
 import axios from "axios";
 import { ethers, Contract, Signer } from "ethers";
+import { Button } from "@chakra-ui/react";
 
 import Chains from "../../public/chains.json";
 import Default from "../../layouts/default";
@@ -13,9 +14,10 @@ const View = () => {
     const [contract, setContract] = useState<Contract>();
     const [network, setNetwork] = useState<any>();
     const [contractData, setContractData] = useState<any>();
+    const [userAddress, setUserAddress] = useState<string>("");
     const [isConnected, setConnected] = useState<boolean>(false);
     const [txStatus, setTxStatus] = useState<string>("");
-    const [txValue, setTxValue] = useState<bigint>();
+    const [txValue, setTxValue] = useState<bigint>(BigInt(0));
     const [walletSigner, setWalletSigner] = useState<Signer>();
     const [contractFunctions, setContractFunctions] = useState<any[]>([]);
     const [viewFunctions, setViewFunctions] = useState<string[]>([]);
@@ -46,6 +48,7 @@ const View = () => {
                 const signer = provider?.getSigner();
                 setWalletSigner(signer);
                 setConnected(true);
+                setUserAddress(await signer.getAddress());
             } catch (error) {
                 if ((error as any)?.code === 4902) {
                     try {
@@ -64,6 +67,7 @@ const View = () => {
                         const signer = provider?.getSigner();
                         setWalletSigner(signer);
                         setConnected(false);
+                        setUserAddress(await signer.getAddress());
                     } catch (addError) {
                         console.error(addError);
                     }
@@ -145,13 +149,18 @@ const View = () => {
     const sendTx = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setProcessing(true);
+        setTxStatus("Loading...");
         const fnArguments: any[] = []
         nonViewFunctionInputs?.forEach(({ name }: { name: any }) => {
             fnArguments.push(formData1?.[name] ?? "");
         });
+        const selectedFuncIsPayable = payableFunctions?.find((fn: any) => fn === selectedNonViewFunction) as any;
+        if (selectedFuncIsPayable !== undefined) {
+            fnArguments.push({value: txValue});
+        }
         try {
-            const contractObj = new ethers.Contract(contractData.address, contractData.ani, walletSigner);
-            const tx = await contractObj?.[selectedNonViewFunction]?.apply(null, fnArguments, {value: txValue});
+            const contractObj = new ethers.Contract(contractData?.address, contractData?.abi, walletSigner);
+            const tx = await contractObj?.[selectedNonViewFunction]?.apply(null, fnArguments);
             await tx?.wait();  
             setTxStatus(`Transaction successful with hash: ${tx?.hash}`);          
         } catch (e: any) {
@@ -187,12 +196,12 @@ const View = () => {
         </Default>
     ) : (
         <Default>
-            <h2 className="text-2xl mt-4 text-blue-800 font-bold uppercase">{contractData?.name}</h2>
-            <h2 className="text-xl font-semibold">Network: {contractData?.network}</h2>
+            <h2 className="text-2xl mt-10 text-blue-600 font-bold uppercase">{contractData?.name}</h2>
+            <h2 className="text-xl font-semibold text-teal-800">Network: {contractData?.network}</h2>
             <h2 className="text-lg text-gray-600 font-medium">Contract Address: {contractData?.address}</h2>
             <br/><br/>
             <h2 className="text-2xl font-bold uppercase">View Functions</h2>
-            <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
+            <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px] bg-zinc-50">
                 <div className="border p-[30px] rounded-l">
                     <select
                         name="select"
@@ -218,7 +227,7 @@ const View = () => {
                             <input
                                 type="text"
                                 id="input"
-                                className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
+                                className="bg-white-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full text-black border-2 border-black"
                                 placeholder={inputParam?.name}
                                 name={inputParam?.name}
                                 onChange={handleFormDataChange}
@@ -227,29 +236,34 @@ const View = () => {
                             />
                         );
                     })}
-                    <button 
+                    <Button 
                         className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]"
-                        disabled={processing}
+                        colorScheme='blue'
+                        isLoading={processing}
+                        loadingText="Querying..."
+                        type="submit"
                     >
                         Query data
-                    </button>
+                    </Button>
                 </form>
                 <div className="border p-[30px] rounded-r">
                     <p className="font-sans mb-6 text-xl font-semibold">OUTPUT</p>
-                    <p className="font-sans text-lg">{viewFunctionOuput}</p>
+                    <p className="font-sans text-medium">{viewFunctionOuput}</p>
                 </div>
             </div>
-            <div className="flex items-center justify-between w-full">
+            <br/>
+            <div className="flex items-center justify-between w-full mt-5">
                 <h2 className="text-2xl font-bold uppercase">State Mutating Functions</h2>
                 <button
                     onClick={connectWallet}
-                    className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"
+                    className="font-semibold bg-green-700 hover:bg-green-600 transition-all duration-300 ease-in-out text-white rounded px-[20px] py-[10px]"
                     disabled={isConnected}
                 >
                     {isConnected ? "Connected" : "Connect Wallet"}
                 </button>
+                <span>{isConnected ? userAddress : null}</span>
             </div>
-            <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px]">
+            <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px] bg-zinc-50 mb-10">
                 <div className="border p-[30px] rounded-l">
                     <select
                         name="select"
@@ -275,7 +289,7 @@ const View = () => {
                             <input
                                 type="text"
                                 id="input"
-                                className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
+                                className="bg-white px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full text-black border-2 border-black"
                                 placeholder={inputParam?.name}
                                 required
                                 key={key}
@@ -284,25 +298,29 @@ const View = () => {
                             />
                         );
                     })}
+                    <p className="text-gray-800 mt-[15px] mb-1">Value to send (wei)</p>
                     <input
                         type="text"
                         id="input"
                         name="txvalue"
-                        className="bg-gray-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full"
-                        placeholder="Value to send (wei)"
-                        required
+                        value={txValue?.toString()}
+                        className="bg-white-100 px-[10px] py-[7px] mt-[20px] rounded max-w-[400px] w-full text-black border-2 border-black"
                         onChange={e => setTxValue(BigInt(e.target.value))}
                     />
-                    <button 
+                    <Button 
                         className="font-semibold bg-blue-500 hover:bg-blue-400 transition-all duration-300 mt-[20px] ease-in-out text-white rounded px-[20px] py-[10px]"
                         disabled={!isConnected}
+                        colorScheme='blue'
+                        isLoading={processing}
+                        loadingText="Sending..."
+                        type="submit"
                     >
                         Send Tx  
-                    </button>
+                    </Button>
                 </form>
                 <div className="border p-[30px] rounded-r">
                     <p className="font-sans mb-6 text-xl font-semibold">TX STATUS</p>
-                    <p className="font-sans text-lg">{txStatus}</p>
+                    <p className="font-sans text-medium">{txStatus}</p>
                 </div>
             </div>
         </Default>
