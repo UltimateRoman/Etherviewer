@@ -21,8 +21,8 @@ const View = () => {
     const [walletSigner, setWalletSigner] = useState<Signer>();
     const [contractFunctions, setContractFunctions] = useState<any[]>([]);
     const [viewFunctions, setViewFunctions] = useState<string[]>([]);
-    const [viewFunctionInputs, setViewFunctionInputs] = useState<any[]>();
-    const [viewFunctionOuput, setViewFunctionOutput] = useState<string>("");
+    const [viewFunctionInputs, setViewFunctionInputs] = useState<any[]>([]);
+    const [viewFunctionOutput, setViewFunctionOutput] = useState<string>("");
     const [nonViewFunctionInputs, setNonViewFunctionInputs] = useState<any[]>([]);
     const [nonViewFunctions, setNonViewFunctions] = useState<string[]>([]);
     const [payableFunctions, setPayableFunctions] = useState<string[]>([]);
@@ -112,6 +112,9 @@ const View = () => {
                     setNonViewFunctions(nonViewFunctionNames);
                     setPayableFunctions(payableFunctionNames);
                     setNonPayableFunctions(nonPayableFunctionNames);
+
+                    setSelectedViewFunction(viewFunctionNames[0]);
+                    setSelectedNonViewFunction(nonViewFunctionNames[0]);
                 } catch (e) {
                     router.push("/");
                 }
@@ -248,7 +251,7 @@ const View = () => {
                 </form>
                 <div className="border p-[30px] rounded-r">
                     <p className="font-sans mb-6 text-xl font-semibold">OUTPUT</p>
-                    <p className="font-sans text-medium">{viewFunctionOuput}</p>
+                    <p className="font-sans text-medium">{viewFunctionOutput}</p>
                 </div>
             </div>
             <br/>
