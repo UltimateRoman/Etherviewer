@@ -47,7 +47,7 @@ const Home: NextPage = () => {
         const cid = await client.put(files);
         toast({
           title: "Contract Data Uploaded Successfully",
-          description: `View your contract at https://localhost:3000/view/${cid}`,
+          description: `View your contract at https://etherviewer.vercel.app/view/${cid}`,
           status: "success",
           duration: 5000,
           isClosable: true
