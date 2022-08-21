@@ -202,6 +202,10 @@ const View = () => {
             <h2 className="text-2xl mt-10 text-blue-600 font-bold uppercase">{contractData?.name}</h2>
             <h2 className="text-xl font-semibold text-teal-800">Network: {contractData?.network}</h2>
             <h2 className="text-lg text-gray-600 font-medium">Contract Address: {contractData?.address}</h2>
+            <br/>
+            {contractData?.notes !== "" &&
+                <div className="flex items-center justify-center px-[20px] py-[40px] text-center bg-slate-100 h-full flex-1 rounded">{contractData?.notes}</div>
+            }
             <br/><br/>
             <h2 className="text-2xl font-bold uppercase">View Functions</h2>
             <div className="grid grid-cols-3 min-h-[400px] mt-[30px] pb-[60px] bg-zinc-50">
