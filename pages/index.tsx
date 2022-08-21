@@ -75,14 +75,14 @@ const Home: NextPage = () => {
           <li className="flex items-center justify-center px-[20px] py-[40px] text-center bg-gray-100 h-full flex-1 rounded">2. Get a shareable link to your auto-generated contract UI</li>
           <li className="flex items-center justify-center px-[20px] py-[40px] text-center bg-gray-100 h-full flex-1 rounded">3. Share the link and interact with your smart contracts on Etherviewer</li>
         </ul>
-        <form onSubmit={handleSubmit} className="flex flex-col w-full items-center justify-center text-left">
+        <form onSubmit={handleSubmit} className="flex flex-col w-full items-center justify-center text-left py-[60px] bg-gray-100 rounded">
           <label htmlFor="name" className="text-lg md:text-xl text-left w-full max-w-[400px] font-bold lg:text-3xl">Contract Name</label>
           <input
             type="text"
             id="name"
             value={name}
             onChange={e => setName(e.target.value)}
-            className="bg-gray-100 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
+            className="bg-white px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
             placeholder="Enter name of the smart contract"
             required
           />
@@ -92,7 +92,7 @@ const Home: NextPage = () => {
             id="address"
             value={address}
             onChange={e => setAddress(e.target.value)}
-            className="bg-gray-100 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
+            className="bg-white px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
             placeholder="Enter the smart contract address"
             required
           />
@@ -101,7 +101,7 @@ const Home: NextPage = () => {
             id="network"
             value={network}
             onChange={e => setNetwork(e.target.value)}
-            className="bg-gray-100 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
+            className="bg-white px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
             placeholder="Select EVM Network"
           >
             {NetworkList?.network_names?.map((network, key) => {
@@ -116,7 +116,7 @@ const Home: NextPage = () => {
             id="artifact"
             accept="application/json"
             onChange={e => setFile(e.target.files?.[0] ?? null)}
-            className="bg-gray-100 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
+            className="bg-white px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full"
             placeholder="Upload JSON artifact"
             required
           />
@@ -127,10 +127,10 @@ const Home: NextPage = () => {
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={4}
-            className="bg-gray-100 px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full resize-none"
+            className="bg-white px-[10px] py-[7px] mt-[10px] rounded max-w-[400px] w-full resize-none"
           >
           </textarea>
-          <Button 
+          <Button
             className="bg-blue-900 hover:bg-blue-400 text-white mt-[20px] rounded px-[20px] w-full max-w-[400px] py-[10px]"
             colorScheme='blue'
             isLoading={loading}
